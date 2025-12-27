@@ -122,15 +122,6 @@ app.delete('/api/products/:id', authenticate, async (req, res) => {
   }
 });
 
-// --- SERVE FRONTEND (STATIC FILES) ---
-// Bagian ini membuat server bisa menampilkan hasil build React
-app.use(express.static(path.join(__dirname, 'dist')));
-// --- KONFIGURASI SERVER ---
-
-// Jika rute tidak dikenali (bukan API), kirim file index.html React
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
 // Export app untuk Vercel (Serverless)
 export default app;
 
