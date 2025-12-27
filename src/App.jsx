@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './index.css';
 import { 
   Search, ShoppingBag, Smartphone, Laptop, Zap, Star, Percent,
-  CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle
+  CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 function App() {
@@ -55,6 +55,8 @@ function App() {
   // Loading States
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // FETCH DATA DARI BACKEND
   const fetchProducts = async () => {
@@ -72,6 +74,12 @@ function App() {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    if (selectedProduct) {
+        setCurrentImageIndex(0);
+    }
+  }, [selectedProduct]);
 
   // LOGIKA INPUT VARIAN
   const handleVariantChange = (index, field, value) => {
@@ -177,6 +185,7 @@ function App() {
     if (!newProduct.name || !newProduct.image) return alert("Nama Produk dan Gambar Utama wajib diisi!");
     if (newVariants.some(v => !v.name || !v.price || !v.stock)) return alert("Mohon lengkapi semua data varian (Nama, Harga, Stok)!");
 
+    setIsSaving(true);
     const formattedVariants = newVariants.map(v => ({ 
         ...v, 
         price: parseInt(v.price) || 0, 
@@ -219,6 +228,8 @@ function App() {
     } catch (error) {
         console.error("Error saving product:", error);
         alert(`Gagal menyimpan produk: ${error.message}.`);
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -493,7 +504,23 @@ function App() {
 
             {/* Kiri: Ringkasan */}
             <div className="w-full md:w-5/12 bg-slate-50 p-6 md:p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-slate-200 shrink-0 md:h-full md:overflow-y-auto">
-               <img src={selectedProduct.image} className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-xl mb-4 shadow-md" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
+               
+               {/* SLIDER GAMBAR */}
+               <div className="relative mb-6 group">
+                   <img src={(selectedProduct.images && selectedProduct.images.length > 0 ? selectedProduct.images : [selectedProduct.image])[currentImageIndex]} className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-2xl shadow-lg bg-white" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
+                   {(selectedProduct.images && selectedProduct.images.length > 1) && (
+                       <>
+                           <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === 0 ? selectedProduct.images.length - 1 : prev - 1)); }} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 p-1.5 rounded-full shadow-sm hover:bg-white text-slate-800 transition"><ChevronLeft size={20}/></button>
+                           <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === selectedProduct.images.length - 1 ? 0 : prev + 1)); }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 p-1.5 rounded-full shadow-sm hover:bg-white text-slate-800 transition"><ChevronRight size={20}/></button>
+                           <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                               {selectedProduct.images.map((_, idx) => (
+                                   <div key={idx} className={`w-2 h-2 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
+                               ))}
+                           </div>
+                       </>
+                   )}
+               </div>
+
                <h3 className="font-bold text-slate-900 text-xl md:text-2xl leading-tight mb-2">{selectedProduct.name}</h3>
                
                {/* Harga di Modal */}
@@ -723,8 +750,12 @@ function App() {
                         </div>
 
                         <div className="pt-4 border-t border-slate-100 mt-4">
-                             <button onClick={handleSaveProduct} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-base hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95">
-                                <Save size={18}/> {editingId ? 'Update Produk' : 'Simpan Produk Baru'}
+                             <button onClick={handleSaveProduct} disabled={isSaving} className={`w-full text-white py-3 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95 ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'}`}>
+                                {isSaving ? (
+                                    <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> Menyimpan...</>
+                                ) : (
+                                    <><Save size={18}/> {editingId ? 'Update Produk' : 'Simpan Produk Baru'}</>
+                                )}
                             </button>
                         </div>
                     </div>
