@@ -1,5 +1,5 @@
 import express from 'express';
-import fs from 'fs';
+import mongoose from 'mongoose';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
@@ -9,7 +9,43 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'products.json');
+
+// --- KONEKSI DATABASE (MONGODB) ---
+// Kita akan mengambil URL dari Environment Variable di Vercel
+const MONGODB_URI = process.env.MONGODB_URI;
+
+let isConnected = false; // Cache koneksi untuk Vercel
+
+const connectDB = async () => {
+  if (isConnected) return;
+  if (!MONGODB_URI) return console.error("MONGODB_URI belum disetting!");
+  try {
+    await mongoose.connect(MONGODB_URI);
+    isConnected = true;
+    console.log("✅ Berhasil terhubung ke MongoDB");
+  } catch (err) {
+    console.error("❌ Gagal koneksi MongoDB:", err);
+  }
+};
+
+// --- SCHEMA DATABASE ---
+const productSchema = new mongoose.Schema({
+  id: { type: Number, required: true, unique: true }, // ID Timestamp
+  name: String,
+  category: String,
+  image: String,
+  otherImages: String,
+  condition: String,
+  desc: String,
+  variants: [{
+    name: String,
+    price: Number,
+    stock: Number
+  }],
+  images: [String]
+});
+
+const Product = mongoose.model('Product', productSchema);
 
 app.use(cors());
 app.use(express.json());
@@ -26,88 +62,89 @@ const authenticate = (req, res, next) => {
   }
 };
 
-// --- FUNGSI BANTUAN ---
-const readDB = () => {
-  if (!fs.existsSync(DB_FILE)) return [];
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return data ? JSON.parse(data) : [];
-  } catch (err) {
-    console.error("Error reading DB:", err);
-    return [];
-  }
-};
-
-const writeDB = (data) => {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-};
-
 // --- API ENDPOINTS ---
 
 // 1. Ambil Semua Produk
-app.get('/api/products', (req, res) => {
-  const products = readDB();
-  res.json(products);
+app.get('/api/products', async (req, res) => {
+  await connectDB();
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: "Gagal mengambil data" });
+  }
 });
 
 // 2. Tambah Produk Baru
-app.post('/api/products', authenticate, (req, res) => {
+app.post('/api/products', authenticate, async (req, res) => {
+  await connectDB();
   try {
-    const products = readDB();
-    const newProduct = {
+    const newProduct = new Product({
       id: Date.now(), // ID unik berdasarkan timestamp
       ...req.body
-    };
-    products.push(newProduct);
-    writeDB(products);
-    console.log("Produk ditambahkan:", newProduct.name);
+    });
+    await newProduct.save();
     res.status(201).json(newProduct);
   } catch (error) {
-    console.error("Gagal menambah produk:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: error.message });
   }
 });
 
 // 3. Update Produk (Stok, Harga, dll)
-app.put('/api/products/:id', authenticate, (req, res) => {
-  const products = readDB();
-  const { id } = req.params;
-  const index = products.findIndex(p => p.id == id);
-
-  if (index !== -1) {
-    products[index] = { ...products[index], ...req.body };
-    writeDB(products);
-    res.json(products[index]);
-  } else {
-    res.status(404).json({ message: "Produk tidak ditemukan" });
+app.put('/api/products/:id', authenticate, async (req, res) => {
+  await connectDB();
+  try {
+    const { id } = req.params;
+    const updated = await Product.findOneAndUpdate({ id: Number(id) }, req.body, { new: true });
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ message: "Produk tidak ditemukan" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
 // 4. Hapus Produk
-app.delete('/api/products/:id', authenticate, (req, res) => {
-  const products = readDB();
-  const { id } = req.params;
-  console.log("Mencoba menghapus produk ID:", id);
-  const newProducts = products.filter(p => String(p.id) !== id);
-  
-  if (products.length !== newProducts.length) {
-    writeDB(newProducts);
-    res.json({ message: "Produk berhasil dihapus" });
-  } else {
-    console.log("Gagal menghapus: ID tidak ditemukan");
-    res.status(404).json({ message: "Produk tidak ditemukan" });
+app.delete('/api/products/:id', authenticate, async (req, res) => {
+  await connectDB();
+  try {
+    const { id } = req.params;
+    const deleted = await Product.findOneAndDelete({ id: Number(id) });
+    if (deleted) {
+      res.json({ message: "Produk berhasil dihapus" });
+    } else {
+      res.status(404).json({ message: "Produk tidak ditemukan" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
 // --- SERVE FRONTEND (STATIC FILES) ---
 // Bagian ini membuat server bisa menampilkan hasil build React
 app.use(express.static(path.join(__dirname, 'dist')));
+// --- KONFIGURASI SERVER ---
 
 // Jika rute tidak dikenali (bukan API), kirim file index.html React
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+// Export app untuk Vercel (Serverless)
+export default app;
 
-app.listen(PORT, () => {
-  console.log(`Server Backend berjalan di http://localhost:${PORT}`);
-});
+// Jalankan server manual HANYA jika bukan di Vercel (Localhost)
+if (!process.env.VERCEL) {
+  // Koneksi DB dulu baru jalanin server
+  connectDB().then(() => {
+    app.use(express.static(path.join(__dirname, 'dist')));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
+    
+    app.listen(PORT, () => {
+      console.log(`Server Backend berjalan di http://localhost:${PORT}`);
+    });
+  });
+}
