@@ -52,6 +52,10 @@ function App() {
     { name: "", price: "", promoPrice: "", stock: "" }
   ]);
 
+  // Loading States
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   // FETCH DATA DARI BACKEND
   const fetchProducts = async () => {
     try {
@@ -60,6 +64,8 @@ function App() {
       setProducts(data);
     } catch (error) {
       console.error("Gagal mengambil data produk:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -256,22 +262,58 @@ function App() {
     if (selectedVariant.stock <= 0) return alert("Maaf, stok varian ini sedang habis.");
     if (!buyerDetails.nama || !buyerDetails.telepon || !buyerDetails.jalan) return alert("Mohon lengkapi data alamat utama!");
 
-    const bank = shopConfig.bankAccounts.find(b => b.name === paymentMethod);
-    const paymentInfo = bank ? `${bank.name}: ${bank.number}` : "";
+    setIsProcessing(true); // Mulai animasi loading pesanan
 
-    // Cek apakah varian ini lagi promo
-    const finalPrice = (selectedVariant.promoPrice && selectedVariant.promoPrice > 0 && selectedVariant.promoPrice < selectedVariant.price) 
-        ? selectedVariant.promoPrice 
-        : selectedVariant.price;
+    setTimeout(() => {
+        const bank = shopConfig.bankAccounts.find(b => b.name === paymentMethod);
+        const paymentInfo = bank ? `${bank.name}: ${bank.number}` : "";
 
-    const totalPrice = finalPrice * quantity;
-    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(finalPrice)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n📝 Catatan: ${buyerDetails.catatan || '-'}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
-    const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+        // Cek apakah varian ini lagi promo
+        const finalPrice = (selectedVariant.promoPrice && selectedVariant.promoPrice > 0 && selectedVariant.promoPrice < selectedVariant.price) 
+            ? selectedVariant.promoPrice 
+            : selectedVariant.price;
+
+        const totalPrice = finalPrice * quantity;
+        const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(finalPrice)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n📝 Catatan: ${buyerDetails.catatan || '-'}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
+        const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+        
+        setIsProcessing(false); // Hentikan animasi
+    }, 2000); // Delay 2 detik agar terlihat prosesnya
   };
+
+  // TAMPILAN LOADING HALAMAN (SPLASH SCREEN)
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
+        <div className="flex items-center gap-2 animate-pulse">
+            <ShoppingBag className="text-blue-600" size={24} />
+            <h2 className="text-xl font-bold text-slate-800">{shopConfig.name}</h2>
+        </div>
+        <p className="text-slate-400 text-sm mt-2">Memuat katalog terbaik...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-20">
+      
+      {/* OVERLAY LOADING PROSES PESANAN */}
+      {isProcessing && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-all">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in-95">
+                <div className="relative mb-4">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-100 border-t-blue-600"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Zap size={20} className="text-blue-600 animate-pulse"/>
+                    </div>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-1">Memproses Pesanan...</h3>
+                <p className="text-slate-500 text-sm text-center max-w-[200px]">Mohon tunggu, sedang menghubungkan ke WhatsApp.</p>
+            </div>
+        </div>
+      )}
       
       {/* CSS untuk Animasi Floating Halus (Supaya gambar bergerak pelan) */}
       <style>{`
