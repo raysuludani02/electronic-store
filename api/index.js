@@ -35,7 +35,6 @@ const productSchema = new mongoose.Schema({
   name: String,
   category: String,
   image: String,
-  otherImages: String,
   condition: String,
   desc: String,
   variants: [{

@@ -198,7 +198,6 @@ function App() {
         ...newProduct,
         variants: formattedVariants,
         images: imageList,
-        otherImages: "" // Reset legacy field
     };
 
     try {
@@ -696,8 +695,9 @@ function App() {
                             <div className="flex flex-col gap-2">
                                 <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                                 {newProduct.image && (
-                                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200">
+                                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
                                         <img src={newProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                                        <button onClick={() => setNewProduct({...newProduct, image: ""})} className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition" title="Hapus Gambar"><Trash2 size={16}/></button>
                                     </div>
                                 )}
                             </div>
