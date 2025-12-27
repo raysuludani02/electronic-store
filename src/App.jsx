@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './index.css';
 import { 
-  Search, ShoppingBag, Smartphone, Laptop, Zap, Star, 
+  Search, ShoppingBag, Smartphone, Laptop, Zap, Star, Percent,
   CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle
 } from 'lucide-react';
 
@@ -49,7 +49,7 @@ function App() {
   });
   // State untuk Varian (Minimal 1)
   const [newVariants, setNewVariants] = useState([
-    { name: "", price: "", stock: "" }
+    { name: "", price: "", promoPrice: "", stock: "" }
   ]);
 
   // FETCH DATA DARI BACKEND
@@ -75,7 +75,7 @@ function App() {
   };
 
   const addVariant = () => {
-    setNewVariants([...newVariants, { name: "", price: "", stock: "" }]);
+    setNewVariants([...newVariants, { name: "", price: "", promoPrice: "", stock: "" }]);
   };
 
   const removeVariant = (index) => {
@@ -86,7 +86,7 @@ function App() {
 
   const resetForm = () => {
     setNewProduct({ name: "", category: "ibox", image: "", otherImages: [], condition: "Baru", desc: "" });
-    setNewVariants([{ name: "", price: "", stock: "" }]);
+    setNewVariants([{ name: "", price: "", promoPrice: "", stock: "" }]);
     setEditingId(null);
   };
 
@@ -100,7 +100,10 @@ function App() {
         desc: product.desc
     });
     // Pastikan varian ada, jika tidak buat default
-    setNewVariants(product.variants && product.variants.length > 0 ? product.variants : [{ name: "", price: "", stock: "" }]);
+    setNewVariants(product.variants && product.variants.length > 0 
+        ? product.variants.map(v => ({ ...v, promoPrice: v.promoPrice || "" })) 
+        : [{ name: "", price: "", promoPrice: "", stock: "" }]
+    );
     setEditingId(product.id);
     setAdminView("form");
   };
@@ -171,6 +174,7 @@ function App() {
     const formattedVariants = newVariants.map(v => ({ 
         ...v, 
         price: parseInt(v.price) || 0, 
+        promoPrice: parseInt(v.promoPrice) || 0,
         stock: parseInt(v.stock) || 0 
     }));
     const imageList = [newProduct.image, ...newProduct.otherImages];
@@ -233,7 +237,14 @@ function App() {
   };
 
   const filteredProducts = products.filter(product => {
-    const categoryMatch = activeCategory === "all" || product.category === activeCategory;
+    let categoryMatch = true;
+    if (activeCategory === "promo") {
+        // Filter produk yang punya setidaknya 1 varian dengan harga promo valid
+        categoryMatch = product.variants.some(v => v.promoPrice > 0 && v.promoPrice < v.price);
+    } else if (activeCategory !== "all") {
+        categoryMatch = product.category === activeCategory;
+    }
+    
     const searchMatch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     return categoryMatch && searchMatch;
   });
@@ -248,8 +259,13 @@ function App() {
     const bank = shopConfig.bankAccounts.find(b => b.name === paymentMethod);
     const paymentInfo = bank ? `${bank.name}: ${bank.number}` : "";
 
-    const totalPrice = selectedVariant.price * quantity;
-    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(selectedVariant.price)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
+    // Cek apakah varian ini lagi promo
+    const finalPrice = (selectedVariant.promoPrice && selectedVariant.promoPrice > 0 && selectedVariant.promoPrice < selectedVariant.price) 
+        ? selectedVariant.promoPrice 
+        : selectedVariant.price;
+
+    const totalPrice = finalPrice * quantity;
+    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(finalPrice)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
     const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -280,7 +296,10 @@ function App() {
             <div className="bg-blue-600 text-white p-2 rounded-lg"><ShoppingBag size={20} /></div>
             <h1 className="font-bold text-lg leading-tight text-slate-900">{shopConfig.name}</h1>
           </div>
-          <a href="#katalog" className="text-blue-600 font-bold text-sm">Lihat Stok</a>
+          <div className="flex items-center gap-4">
+            <button onClick={() => { setActiveCategory('promo'); document.getElementById('katalog').scrollIntoView({behavior: 'smooth'}); }} className="flex items-center gap-1 text-red-500 font-bold text-sm animate-pulse"><Percent size={16}/> Promo Spesial</button>
+            <a href="#katalog" onClick={() => setActiveCategory('all')} className="text-blue-600 font-bold text-sm">Lihat Stok</a>
+          </div>
         </div>
       </header>
 
@@ -375,9 +394,21 @@ function App() {
 
       {/* PRODUCT GRID */}
       <div className="max-w-7xl mx-auto px-6 mt-16 pb-20">
+        {activeCategory === 'promo' && (
+            <div className="mb-6 flex items-center gap-2">
+                <h3 className="text-2xl font-bold text-slate-800">🔥 Sedang Promo</h3>
+                <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">{filteredProducts.length} Produk</span>
+            </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <div 
+          {filteredProducts.map((product) => {
+            // Cek apakah produk ini punya varian promo untuk display harga
+            const promoVariant = product.variants.find(v => v.promoPrice > 0 && v.promoPrice < v.price);
+            const displayPrice = promoVariant ? promoVariant.promoPrice : product.variants[0].price;
+            const originalPrice = promoVariant ? promoVariant.price : null;
+
+            return (
+             <div 
               key={product.id} 
               onClick={() => { setSelectedProduct(product); setSelectedVariant(product.variants[0]); setQuantity(1); }}
               className="bg-white rounded-3xl p-4 shadow-md border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group"
@@ -387,18 +418,27 @@ function App() {
                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
                    {product.condition}
                  </div>
+                 {promoVariant && (
+                    <div className="absolute top-3 right-3 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow-sm animate-pulse">
+                        PROMO
+                    </div>
+                 )}
               </div>
               <div>
                 <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">{product.category}</p>
                 <h3 className="font-bold text-slate-900 text-base leading-snug mb-2 line-clamp-2">{product.name}</h3>
                 <p className="text-xs text-slate-500 mb-2 line-clamp-2">{product.desc}</p>
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-extrabold text-slate-900">{formatRupiah(product.variants[0].price)}</span>
+                  <div className="flex flex-col">
+                    {originalPrice && <span className="text-xs text-slate-400 line-through">{formatRupiah(originalPrice)}</span>}
+                    <span className={`text-lg font-extrabold ${promoVariant ? 'text-red-600' : 'text-slate-900'}`}>{formatRupiah(displayPrice)}</span>
+                  </div>
                   <div className="bg-slate-900 text-white p-2 rounded-lg group-hover:bg-blue-600 transition"><ArrowRight size={16}/></div>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -413,7 +453,20 @@ function App() {
             <div className="w-full md:w-2/5 bg-slate-50 p-8 flex flex-col items-center text-center border-r border-slate-100">
                <img src={selectedProduct.image} className="w-32 h-32 object-cover rounded-xl mb-4 shadow-md" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
                <h3 className="font-bold text-slate-900 text-xl leading-tight mb-2">{selectedProduct.name}</h3>
-               <p className="text-blue-600 font-extrabold text-2xl mb-6">{selectedVariant ? formatRupiah(selectedVariant.price) : '-'}</p>
+               
+               {/* Harga di Modal */}
+               <div className="mb-6">
+                   {selectedVariant && selectedVariant.promoPrice > 0 && selectedVariant.promoPrice < selectedVariant.price ? (
+                       <div className="flex flex-col items-center">
+                           <span className="text-sm text-slate-400 line-through">{formatRupiah(selectedVariant.price)}</span>
+                           <span className="text-red-600 font-extrabold text-2xl">{formatRupiah(selectedVariant.promoPrice)}</span>
+                           <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1">Hemat {formatRupiah(selectedVariant.price - selectedVariant.promoPrice)}</span>
+                       </div>
+                   ) : (
+                       <p className="text-blue-600 font-extrabold text-2xl">{selectedVariant ? formatRupiah(selectedVariant.price) : '-'}</p>
+                   )}
+               </div>
+
                <div className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                  <p className="text-xs text-slate-400 mb-2 font-bold uppercase">Pilih Varian:</p>
                  <div className="flex flex-wrap gap-2">
@@ -421,9 +474,12 @@ function App() {
                      <button 
                         key={i} 
                         onClick={() => { setSelectedVariant(v); setQuantity(1); }} 
-                        className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border transition ${selectedVariant === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
+                        className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border transition relative ${selectedVariant === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
                      >
                         {v.name}
+                        {v.promoPrice > 0 && v.promoPrice < v.price && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        )}
                      </button>
                    ))}
                  </div>
@@ -606,9 +662,13 @@ function App() {
                                         <label className="block text-[10px] font-bold text-slate-400 mb-1">Nama Varian</label>
                                         <input type="text" placeholder="Ex: 128GB, Merah" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.name} onChange={e => handleVariantChange(index, 'name', e.target.value)} />
                                     </div>
-                                    <div className="w-1/4">
+                                    <div className="w-1/5">
                                         <label className="block text-[10px] font-bold text-slate-400 mb-1">Harga (Rp)</label>
                                         <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.price} onChange={e => handleVariantChange(index, 'price', e.target.value)} />
+                                    </div>
+                                    <div className="w-1/5">
+                                        <label className="block text-[10px] font-bold text-red-400 mb-1">Promo (Opsional)</label>
+                                        <input type="number" placeholder="0" className="w-full border border-red-200 bg-red-50 p-2 rounded-lg text-sm text-red-600" value={variant.promoPrice} onChange={e => handleVariantChange(index, 'promoPrice', e.target.value)} />
                                     </div>
                                     <div className="w-1/6">
                                         <label className="block text-[10px] font-bold text-slate-400 mb-1">Stok</label>
