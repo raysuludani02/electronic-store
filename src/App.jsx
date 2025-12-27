@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './index.css';
 import { 
   Search, ShoppingBag, Smartphone, Laptop, Zap, Star, Percent,
-  CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle, ChevronLeft, ChevronRight
+  CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle, ChevronLeft, ChevronRight, Copy
 } from 'lucide-react';
 
 function App() {
@@ -119,6 +119,23 @@ function App() {
         : [{ name: "", price: "", promoPrice: "", stock: "" }]
     );
     setEditingId(product.id);
+    setAdminView("form");
+  };
+
+  const handleDuplicateClick = (product) => {
+    setNewProduct({
+        name: `${product.name} (Copy)`,
+        category: product.category,
+        image: product.image,
+        otherImages: product.images && product.images.length > 1 ? product.images.slice(1) : [],
+        condition: product.condition,
+        desc: product.desc
+    });
+    setNewVariants(product.variants && product.variants.length > 0 
+        ? product.variants.map(v => ({ ...v, promoPrice: v.promoPrice || "" })) 
+        : [{ name: "", price: "", promoPrice: "", stock: "" }]
+    );
+    setEditingId(null); // Reset ID agar tersimpan sebagai produk baru
     setAdminView("form");
   };
 
@@ -656,6 +673,7 @@ function App() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <button onClick={() => handleDuplicateClick(product)} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition" title="Duplikat"><Copy size={16}/></button>
                                         <button onClick={() => handleEditClick(product)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"><Edit size={16}/></button>
                                         <button onClick={() => handleDeleteClick(product.id)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"><Trash2 size={16}/></button>
                                     </div>
