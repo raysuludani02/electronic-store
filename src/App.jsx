@@ -1,0 +1,559 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Search, ShoppingBag, Smartphone, Laptop, Zap, Star, 
+  CheckCircle, X, CreditCard, ArrowRight, MapPin, User, Phone, Home, Truck, ShieldCheck, Monitor, Minus, Plus, Settings, Save, Trash2, Edit, List, PlusCircle
+} from 'lucide-react';
+
+function App() {
+  // --- KONFIGURASI TOKO ---
+  const shopConfig = {
+    name: "GadgetStore Gorontalo",
+    waNumber: "6281234567890", 
+    bankAccounts: [
+      { name: "DANA", number: "0812-3456-7890 (A.n Owner)" },
+      { name: "BNI", number: "1234567890 (A.n Owner)" },
+      { name: "BRI", number: "0987654321 (A.n Owner)" }
+    ]
+  };
+
+  const categories = [
+    { id: 'all', label: 'Semua', icon: Zap },
+    { id: 'ibox', label: 'iBox', icon: CheckCircle },
+    { id: 'inter', label: 'Inter', icon: Smartphone },
+    { id: 'beacukai', label: 'BC', icon: Smartphone },
+    { id: 'macbook', label: 'Mac', icon: Laptop },
+    { id: 'windows', label: 'Laptop', icon: Monitor },
+  ];
+
+  // --- STATE ---
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAdminOpen, setIsAdminOpen] = useState(false); // Toggle Admin Panel
+  const [adminPassword, setAdminPassword] = useState(""); // Simpan password admin
+  const [adminView, setAdminView] = useState("list"); // 'list' | 'form'
+  const [adminSearch, setAdminSearch] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [buyerDetails, setBuyerDetails] = useState({
+    nama: "", telepon: "", jalan: "", noRumah: "", alamatLengkap: "", kodePos: ""
+  });
+  
+  // State untuk Form Tambah Produk
+  const [newProduct, setNewProduct] = useState({
+    name: "", category: "ibox", image: "", otherImages: "", condition: "Baru", desc: ""
+  });
+  // State untuk Varian (Minimal 1)
+  const [newVariants, setNewVariants] = useState([
+    { name: "", price: "", stock: "" }
+  ]);
+
+  // FETCH DATA DARI BACKEND
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Gagal mengambil data produk:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // LOGIKA INPUT VARIAN
+  const handleVariantChange = (index, field, value) => {
+    const updated = [...newVariants];
+    updated[index][field] = value;
+    setNewVariants(updated);
+  };
+
+  const addVariant = () => {
+    setNewVariants([...newVariants, { name: "", price: "", stock: "" }]);
+  };
+
+  const removeVariant = (index) => {
+    if (newVariants.length === 1) return alert("Minimal harus ada 1 varian!");
+    const updated = newVariants.filter((_, i) => i !== index);
+    setNewVariants(updated);
+  };
+
+  const resetForm = () => {
+    setNewProduct({ name: "", category: "ibox", image: "", otherImages: "", condition: "Baru", desc: "" });
+    setNewVariants([{ name: "", price: "", stock: "" }]);
+    setEditingId(null);
+  };
+
+  const handleEditClick = (product) => {
+    setNewProduct({
+        name: product.name,
+        category: product.category,
+        image: product.image,
+        otherImages: product.otherImages || "",
+        condition: product.condition,
+        desc: product.desc
+    });
+    // Pastikan varian ada, jika tidak buat default
+    setNewVariants(product.variants && product.variants.length > 0 ? product.variants : [{ name: "", price: "", stock: "" }]);
+    setEditingId(product.id);
+    setAdminView("form");
+  };
+
+  const handleAdminToggle = () => {
+    if (isAdminOpen) {
+        setIsAdminOpen(false);
+        setAdminPassword(""); // Reset password saat tutup
+    } else {
+        const pass = prompt("Masukkan Password Admin:");
+        if (pass === "@Ray124102") {
+            setAdminPassword(pass);
+            setIsAdminOpen(true);
+        } else if (pass !== null) {
+            alert("Password Salah! Akses ditolak.");
+        }
+    }
+  };
+
+  // HANDLE SIMPAN (TAMBAH / EDIT)
+  const handleSaveProduct = async () => {
+    if (!newProduct.name || !newProduct.image) return alert("Nama Produk dan Gambar Utama wajib diisi!");
+    if (newVariants.some(v => !v.name || !v.price || !v.stock)) return alert("Mohon lengkapi semua data varian (Nama, Harga, Stok)!");
+
+    const formattedVariants = newVariants.map(v => ({ ...v, price: parseInt(v.price), stock: parseInt(v.stock) }));
+    const imageList = [newProduct.image, ...newProduct.otherImages.split(',').map(s => s.trim()).filter(s => s)];
+
+    const payload = {
+        ...newProduct,
+        variants: formattedVariants,
+        images: imageList // Simpan array gambar jika backend mendukung, atau frontend bisa pakai logic ini nanti
+    };
+
+    try {
+        const url = editingId 
+            ? `/api/products/${editingId}`
+            : '/api/products';
+        
+        const method = editingId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-admin-password': adminPassword // Kirim password ke server
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        alert(`Produk berhasil ${editingId ? 'diupdate' : 'ditambahkan'}!`);
+        fetchProducts(); // Refresh data
+        resetForm();
+        setAdminView("list");
+    } catch (error) {
+        console.error("Error saving product:", error);
+        alert(`Gagal menyimpan produk: ${error.message}.`);
+    }
+  };
+
+  const handleDeleteClick = async (id) => {
+    if(!window.confirm("Yakin ingin menghapus produk ini secara permanen?")) return;
+    try {
+        const response = await fetch(`/api/products/${id}`, { 
+            method: 'DELETE',
+            headers: { 
+                'x-admin-password': adminPassword // Kirim password ke server
+            }
+        });
+        if (response.ok) {
+            alert("Produk berhasil dihapus!");
+            fetchProducts();
+        } else {
+            alert("Gagal menghapus produk. Pastikan server backend sudah direstart (node server.js).");
+        }
+    } catch (error) {
+        alert("Gagal menghapus produk (Koneksi Error).");
+    }
+  };
+
+  const filteredProducts = products.filter(product => {
+    const categoryMatch = activeCategory === "all" || product.category === activeCategory;
+    const searchMatch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return categoryMatch && searchMatch;
+  });
+
+  const formatRupiah = (price) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(price);
+
+  const handleCheckout = () => {
+    if (!selectedVariant) return alert("Pilih varian dulu ya kak!"); 
+    if (selectedVariant.stock <= 0) return alert("Maaf, stok varian ini sedang habis.");
+    if (!buyerDetails.nama || !buyerDetails.telepon || !buyerDetails.jalan) return alert("Mohon lengkapi data alamat utama!");
+
+    const totalPrice = selectedVariant.price * quantity;
+    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(selectedVariant.price)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: Transfer (BNI/BRI/DANA)\n\nMohon cek ongkirnya min. Terima kasih!`;
+    const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-20">
+      
+      {/* CSS untuk Animasi Floating Halus (Supaya gambar bergerak pelan) */}
+      <style>{`
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes float-delayed {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(15px); }
+          100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float-delayed { animation: float-delayed 7s ease-in-out infinite; }
+      `}</style>
+
+      {/* HEADER */}
+      <header className="bg-white sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 text-white p-2 rounded-lg"><ShoppingBag size={20} /></div>
+            <h1 className="font-bold text-lg leading-tight text-slate-900">{shopConfig.name}</h1>
+          </div>
+          <a href="#katalog" className="text-blue-600 font-bold text-sm">Lihat Stok</a>
+        </div>
+      </header>
+
+      {/* HERO SECTION (MIRIP GAMBAR REFERENSI) */}
+      <div className="bg-blue-600 relative overflow-hidden pb-32 pt-16 rounded-b-[4rem]">
+        <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
+          
+          {/* Badge Trusted Seller */}
+          <span className="bg-white/20 backdrop-blur-md text-white px-6 py-2 rounded-full text-sm font-semibold mb-6 border border-white/20 shadow-lg">
+            Trusted Seller • Gorontalo
+          </span>
+
+          {/* Headline */}
+          <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-4 tracking-tight drop-shadow-sm">
+            Gadget Impian,<br/>Harga Teman.
+          </h2>
+          <p className="text-blue-100 text-lg mb-10 max-w-2xl">
+            Jasa Dropship iPhone, MacBook, Pixel & Laptop Second Murah Berkualitas & Bergaransi.
+          </p>
+
+          {/* Search Bar Besar */}
+          <div className="w-full max-w-xl relative">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <Search className="text-blue-200" size={24} />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Cari iPhone, Dell, Pixel..." 
+              className="w-full bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl py-4 pl-14 pr-4 text-white placeholder:text-blue-200 focus:outline-none focus:bg-white/30 transition shadow-xl"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+        </div>
+
+        {/* --- DEKORASI IPHONE KIRI (FLOATING) --- */}
+        <div className="hidden lg:block absolute top-32 left-[2%] animate-float pointer-events-none">
+           <img 
+             src="/hover.png" 
+             alt="iPhone Left" 
+             className="w-80 transform -rotate-12 drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] opacity-100"
+             onError={(e) => e.target.src = "https://pngimg.com/d/iphone_14_PNG2.png"}
+           />
+           {/* Glass Card Kiri */}
+           <div className="absolute top-20 right-[-20px] bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl w-48 animate-pulse">
+              <div className="bg-white rounded-full w-8 h-8 flex items-center justify-center mb-2">
+                <CheckCircle className="text-blue-600" size={18}/>
+              </div>
+              <h4 className="text-white font-bold text-lg leading-tight mb-1">Garansi IMEI <br/>& Unit Aman</h4>
+              <p className="text-blue-100 text-[10px]">Barang akan kami QC sebelum pengiriman, di jamin aman.</p>
+           </div>
+        </div>
+
+        {/* --- DEKORASI IPHONE KANAN (FLOATING) --- */}
+        <div className="hidden lg:block absolute top-10 right-[2%] animate-float-delayed pointer-events-none">
+           <img 
+             src="/hover.png" 
+             alt="iPhone Right" 
+             className="w-80 transform rotate-12 drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] opacity-100"
+             onError={(e) => e.target.src = "https://assets.stickpng.com/images/580b57fcd9996e24bc43c51f.png"}
+           />
+           {/* Glass Card Kanan */}
+           <div className="absolute top-20 left-[-40px] bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl w-48 animate-pulse">
+              <div className="bg-white rounded-full w-8 h-8 flex items-center justify-center mb-2">
+                <CheckCircle className="text-blue-600" size={18}/>
+              </div>
+              <h4 className="text-white font-bold text-lg leading-tight mb-1">Garansi IMEI <br/>& Unit Aman</h4>
+              <p className="text-blue-100 text-[10px]">Barang akan kami QC sebelum pengiriman, di jamin aman.</p>
+           </div>
+        </div>
+      </div>
+
+      {/* FILTER BUTTONS (FLOATING OVERLAP) */}
+      <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-20" id="katalog">
+        <div className="bg-white p-3 rounded-2xl shadow-xl flex gap-3 overflow-x-auto no-scrollbar justify-start md:justify-center border border-slate-100">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                activeCategory === cat.id 
+                  ? 'bg-slate-900 text-white shadow-lg transform scale-105' 
+                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              <cat.icon size={18} /> {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* PRODUCT GRID */}
+      <div className="max-w-7xl mx-auto px-6 mt-16 pb-20">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <div 
+              key={product.id} 
+              onClick={() => { setSelectedProduct(product); setSelectedVariant(product.variants[0]); setQuantity(1); }}
+              className="bg-white rounded-3xl p-4 shadow-md border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group"
+            >
+              <div className="bg-slate-50 rounded-2xl mb-4 overflow-hidden aspect-[4/5] relative flex items-center justify-center">
+                 <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" onError={(e) => {e.target.src = "https://placehold.co/400x500/f1f5f9/334155?text=Gadget"}}/>
+                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">
+                   {product.condition}
+                 </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">{product.category}</p>
+                <h3 className="font-bold text-slate-900 text-base leading-snug mb-2 line-clamp-2">{product.name}</h3>
+                <p className="text-xs text-slate-500 mb-2 line-clamp-2">{product.desc}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-extrabold text-slate-900">{formatRupiah(product.variants[0].price)}</span>
+                  <div className="bg-slate-900 text-white p-2 rounded-lg group-hover:bg-blue-600 transition"><ArrowRight size={16}/></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* MODAL POPUP (FORM LENGKAP) */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setSelectedProduct(null)}></div>
+          <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[90vh] animate-in zoom-in-95">
+            <button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 z-10 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X size={20} /></button>
+
+            {/* Kiri: Ringkasan */}
+            <div className="w-full md:w-2/5 bg-slate-50 p-8 flex flex-col items-center text-center border-r border-slate-100">
+               <img src={selectedProduct.image} className="w-32 h-32 object-cover rounded-xl mb-4 shadow-md" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
+               <h3 className="font-bold text-slate-900 text-xl leading-tight mb-2">{selectedProduct.name}</h3>
+               <p className="text-blue-600 font-extrabold text-2xl mb-6">{selectedVariant ? formatRupiah(selectedVariant.price) : '-'}</p>
+               <div className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                 <p className="text-xs text-slate-400 mb-2 font-bold uppercase">Pilih Varian:</p>
+                 <div className="flex flex-wrap gap-2">
+                   {selectedProduct.variants.map((v, i) => (
+                     <button 
+                        key={i} 
+                        onClick={() => { setSelectedVariant(v); setQuantity(1); }} 
+                        className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border transition ${selectedVariant === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
+                     >
+                        {v.name}
+                     </button>
+                   ))}
+                 </div>
+                 
+                 {/* Stok & Quantity */}
+                 <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Stok Tersedia</p>
+                        <p className={`text-sm font-bold ${selectedVariant?.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {selectedVariant?.stock > 0 ? `${selectedVariant.stock} Unit` : 'Stok Habis'}
+                        </p>
+                    </div>
+                    {selectedVariant?.stock > 0 && (
+                        <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1 hover:bg-white rounded-md transition"><Minus size={14}/></button>
+                            <span className="w-8 text-center text-sm font-bold">{quantity}</span>
+                            <button onClick={() => setQuantity(Math.min(selectedVariant.stock, quantity + 1))} className="p-1 hover:bg-white rounded-md transition"><Plus size={14}/></button>
+                        </div>
+                    )}
+                 </div>
+               </div>
+            </div>
+
+            {/* Kanan: Form */}
+            <div className="w-full md:w-3/5 p-8 overflow-y-auto">
+              <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2 text-lg"><Truck size={20} className="text-blue-600"/> Data Pengiriman</h3>
+              <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div><label className="text-[10px] font-bold text-slate-400 ml-1">Nama</label><div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200"><User size={14} className="text-slate-400"/><input type="text" className="bg-transparent w-full p-2.5 text-sm outline-none" placeholder="Budi" value={buyerDetails.nama} onChange={(e) => setBuyerDetails({...buyerDetails, nama: e.target.value})} /></div></div>
+                      <div><label className="text-[10px] font-bold text-slate-400 ml-1">WhatsApp</label><div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200"><Phone size={14} className="text-slate-400"/><input type="number" className="bg-transparent w-full p-2.5 text-sm outline-none" placeholder="08xx" value={buyerDetails.telepon} onChange={(e) => setBuyerDetails({...buyerDetails, telepon: e.target.value})} /></div></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                     <div className="col-span-2"><label className="text-[10px] font-bold text-slate-400 ml-1">Jalan</label><div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200"><Home size={14} className="text-slate-400"/><input type="text" className="bg-transparent w-full p-2.5 text-sm outline-none" placeholder="Jl. Mawar" value={buyerDetails.jalan} onChange={(e) => setBuyerDetails({...buyerDetails, jalan: e.target.value})} /></div></div>
+                     <div><label className="text-[10px] font-bold text-slate-400 ml-1">No. Rumah</label><input type="text" className="w-full bg-slate-50 rounded-xl p-2.5 text-sm border border-slate-200 outline-none text-center" placeholder="12A" value={buyerDetails.noRumah} onChange={(e) => setBuyerDetails({...buyerDetails, noRumah: e.target.value})} /></div>
+                  </div>
+                  <div><label className="text-[10px] font-bold text-slate-400 ml-1">Detail (RT/RW, Kel, Kec)</label><textarea className="w-full bg-slate-50 rounded-xl p-3 text-sm border border-slate-200 outline-none" rows="2" placeholder="RT 05 RW 02, Kel. X, Kec. Y..." value={buyerDetails.alamatLengkap} onChange={(e) => setBuyerDetails({...buyerDetails, alamatLengkap: e.target.value})}></textarea></div>
+                  <div><label className="text-[10px] font-bold text-slate-400 ml-1">Kode Pos</label><input type="number" className="w-1/3 bg-slate-50 rounded-xl p-2.5 text-sm border border-slate-200 outline-none" placeholder="96xxx" value={buyerDetails.kodePos} onChange={(e) => setBuyerDetails({...buyerDetails, kodePos: e.target.value})} /></div>
+              </div>
+              <button 
+                onClick={handleCheckout} 
+                disabled={!selectedVariant || selectedVariant.stock <= 0}
+                className={`w-full mt-8 text-white py-4 rounded-xl font-bold shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 ${!selectedVariant || selectedVariant.stock <= 0 ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}
+              >
+                {selectedVariant?.stock > 0 ? 'Pesan Sekarang' : 'Stok Habis'} <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer className="text-center text-slate-400 text-xs pb-8">
+        <p>&copy; 2025 {shopConfig.name}. Amanah & Terpercaya.</p>
+        <button onClick={handleAdminToggle} className="mt-4 text-slate-300 hover:text-blue-600 flex items-center gap-1 mx-auto">
+            <Settings size={12}/> {isAdminOpen ? 'Tutup Admin' : 'Admin Mode'}
+        </button>
+      </footer>
+
+      {/* ADMIN PANEL (SEDERHANA) */}
+      {isAdminOpen && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 animate-in slide-in-from-bottom max-h-[80vh] overflow-y-auto">
+            <div className="max-w-5xl mx-auto p-6">
+                
+                {/* ADMIN HEADER */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-4">
+                        <h3 className="font-bold text-xl flex items-center gap-2 text-slate-800"><Settings size={24}/> Panel Admin</h3>
+                        <div className="flex bg-slate-100 rounded-lg p-1">
+                            <button onClick={() => setAdminView("list")} className={`px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition ${adminView === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}><List size={14}/> Kelola Produk</button>
+                            <button onClick={() => { resetForm(); setAdminView("form"); }} className={`px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition ${adminView === 'form' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}><PlusCircle size={14}/> Tambah Baru</button>
+                        </div>
+                    </div>
+                    <button onClick={() => setIsAdminOpen(false)} className="text-slate-400 hover:text-red-500"><X size={24}/></button>
+                </div>
+
+                {/* VIEW: LIST PRODUK */}
+                {adminView === "list" && (
+                    <div className="space-y-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+                            <input 
+                                type="text" 
+                                placeholder="Cari produk yang tersimpan..." 
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500"
+                                value={adminSearch}
+                                onChange={(e) => setAdminSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto">
+                            {products.filter(p => p.name.toLowerCase().includes(adminSearch.toLowerCase())).map((product) => (
+                                <div key={product.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition">
+                                    <div className="flex items-center gap-3">
+                                        <img src={product.image} className="w-12 h-12 rounded-lg object-cover bg-slate-100" onError={(e) => e.target.src = "https://placehold.co/100"} />
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-800">{product.name}</h4>
+                                            <p className="text-xs text-slate-500">{product.variants.length} Varian • Stok Total: {product.variants.reduce((a,b) => a + parseInt(b.stock), 0)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => handleEditClick(product)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"><Edit size={16}/></button>
+                                        <button onClick={() => handleDeleteClick(product.id)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"><Trash2 size={16}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                            {products.length === 0 && <p className="text-center text-slate-400 text-sm py-4">Belum ada produk.</p>}
+                        </div>
+                    </div>
+                )}
+
+                {/* VIEW: FORM INPUT */}
+                {adminView === "form" && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4">
+                    {/* KOLOM KIRI: INFO UTAMA */}
+                    <div className="md:col-span-1 space-y-4">
+                        <h4 className="font-bold text-sm text-slate-400 uppercase tracking-wider">1. Informasi Produk</h4>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Nama Produk</label>
+                            <input type="text" placeholder="Contoh: iPhone 13 Pro" className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Kategori</label>
+                            <select className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                                {categories.filter(c => c.id !== 'all').map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Kondisi</label>
+                            <input type="text" placeholder="Baru / Second Mulus / Like New" className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.condition} onChange={e => setNewProduct({...newProduct, condition: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Deskripsi Singkat</label>
+                            <textarea placeholder="Keterangan garansi, kelengkapan, dll..." className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" rows="3" value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})}></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">URL Gambar Utama</label>
+                            <input type="text" placeholder="https://... atau /gambar.png" className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Gambar Lain (Opsional, pisah koma)</label>
+                            <input type="text" placeholder="url2, url3..." className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.otherImages} onChange={e => setNewProduct({...newProduct, otherImages: e.target.value})} />
+                        </div>
+                    </div>
+
+                    {/* KOLOM KANAN: VARIAN */}
+                    <div className="md:col-span-2 space-y-4">
+                        <div className="flex justify-between items-end">
+                            <h4 className="font-bold text-sm text-slate-400 uppercase tracking-wider">2. Varian & Harga</h4>
+                            <button onClick={addVariant} className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold hover:bg-blue-200 transition flex items-center gap-1"><Plus size={14}/> Tambah Varian</button>
+                        </div>
+                        
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                            {newVariants.map((variant, index) => (
+                                <div key={index} className="flex gap-3 items-end bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div className="flex-1">
+                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Nama Varian</label>
+                                        <input type="text" placeholder="Ex: 128GB, Merah" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.name} onChange={e => handleVariantChange(index, 'name', e.target.value)} />
+                                    </div>
+                                    <div className="w-1/4">
+                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Harga (Rp)</label>
+                                        <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.price} onChange={e => handleVariantChange(index, 'price', e.target.value)} />
+                                    </div>
+                                    <div className="w-1/6">
+                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Stok</label>
+                                        <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.stock} onChange={e => handleVariantChange(index, 'stock', e.target.value)} />
+                                    </div>
+                                    <button onClick={() => removeVariant(index)} className="p-2.5 bg-red-100 text-red-500 rounded-lg hover:bg-red-200 transition"><Trash2 size={16}/></button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 mt-4">
+                             <button onClick={handleSaveProduct} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-base hover:bg-slate-800 shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95">
+                                <Save size={18}/> {editingId ? 'Update Produk' : 'Simpan Produk Baru'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                )}
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

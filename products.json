@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1766812553931,
+    "name": "iPhone 13 ",
+    "category": "inter",
+    "image": "hover.png",
+    "otherImages": "",
+    "condition": "Bekas Kondisi Mulus 98%",
+    "desc": "Dijamin Mulus dan Aman",
+    "variants": [
+      {
+        "name": "128GB",
+        "price": 4500000,
+        "stock": 2
+      },
+      {
+        "name": "256GB",
+        "price": 5400000,
+        "stock": 1
+      }
+    ],
+    "images": [
+      "hover.png"
+    ]
+  }
+]
