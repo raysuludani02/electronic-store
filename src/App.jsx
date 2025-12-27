@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 
 function App() {
+  // Force new deployment trigger
   // --- KONFIGURASI TOKO ---
   const shopConfig = {
     name: "GadgetStore Gorontalo",
