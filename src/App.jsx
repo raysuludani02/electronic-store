@@ -120,6 +120,22 @@ function App() {
     }
   };
 
+  // HANDLE UPLOAD GAMBAR (BASE64)
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // Batas 2MB
+         alert("Ukuran gambar terlalu besar! Harap gunakan gambar di bawah 2MB.");
+         return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewProduct({ ...newProduct, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // HANDLE SIMPAN (TAMBAH / EDIT)
   const handleSaveProduct = async () => {
     if (!newProduct.name || !newProduct.image) return alert("Nama Produk dan Gambar Utama wajib diisi!");
@@ -511,8 +527,15 @@ function App() {
                             <textarea placeholder="Keterangan garansi, kelengkapan, dll..." className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" rows="3" value={newProduct.desc} onChange={e => setNewProduct({...newProduct, desc: e.target.value})}></textarea>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">URL Gambar Utama</label>
-                            <input type="text" placeholder="https://... atau /gambar.png" className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Upload Gambar Utama</label>
+                            <div className="flex flex-col gap-2">
+                                <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                {newProduct.image && (
+                                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200">
+                                        <img src={newProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 mb-1">Gambar Lain (Opsional, pisah koma)</label>
