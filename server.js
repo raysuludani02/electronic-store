@@ -18,13 +18,14 @@ let isConnected = false; // Cache koneksi untuk Vercel
 
 const connectDB = async () => {
   if (isConnected) return;
-  if (!MONGODB_URI) return console.error("MONGODB_URI belum disetting!");
+  if (!MONGODB_URI) throw new Error("MONGODB_URI belum disetting! Cek Environment Variables di Vercel.");
   try {
     await mongoose.connect(MONGODB_URI);
     isConnected = true;
     console.log("✅ Berhasil terhubung ke MongoDB");
   } catch (err) {
     console.error("❌ Gagal koneksi MongoDB:", err);
+    throw err;
   }
 };
 

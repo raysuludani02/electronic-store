@@ -125,7 +125,11 @@ function App() {
     if (!newProduct.name || !newProduct.image) return alert("Nama Produk dan Gambar Utama wajib diisi!");
     if (newVariants.some(v => !v.name || !v.price || !v.stock)) return alert("Mohon lengkapi semua data varian (Nama, Harga, Stok)!");
 
-    const formattedVariants = newVariants.map(v => ({ ...v, price: parseInt(v.price), stock: parseInt(v.stock) }));
+    const formattedVariants = newVariants.map(v => ({ 
+        ...v, 
+        price: parseInt(v.price) || 0, 
+        stock: parseInt(v.stock) || 0 
+    }));
     const imageList = [newProduct.image, ...newProduct.otherImages.split(',').map(s => s.trim()).filter(s => s)];
 
     const payload = {
