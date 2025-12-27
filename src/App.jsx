@@ -40,7 +40,7 @@ function App() {
   const [adminSearch, setAdminSearch] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [buyerDetails, setBuyerDetails] = useState({
-    nama: "", telepon: "", jalan: "", noRumah: "", alamatLengkap: "", kodePos: ""
+    nama: "", telepon: "", jalan: "", noRumah: "", alamatLengkap: "", kodePos: "", catatan: ""
   });
   
   // State untuk Form Tambah Produk
@@ -265,7 +265,7 @@ function App() {
         : selectedVariant.price;
 
     const totalPrice = finalPrice * quantity;
-    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(finalPrice)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
+    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(finalPrice)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n📝 Catatan: ${buyerDetails.catatan || '-'}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
     const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -304,24 +304,24 @@ function App() {
       </header>
 
       {/* HERO SECTION (MIRIP GAMBAR REFERENSI) */}
-      <div className="bg-blue-600 relative overflow-hidden pb-32 pt-16 rounded-b-[4rem]">
-        <div className="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
+      <div className="bg-blue-600 relative overflow-hidden pb-20 pt-12 md:pb-32 md:pt-16 rounded-b-[2.5rem] md:rounded-b-[4rem]">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10 flex flex-col items-center text-center">
           
           {/* Badge Trusted Seller */}
-          <span className="bg-white/20 backdrop-blur-md text-white px-6 py-2 rounded-full text-sm font-semibold mb-6 border border-white/20 shadow-lg">
+          <span className="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 md:px-6 md:py-2 rounded-full text-xs md:text-sm font-semibold mb-6 border border-white/20 shadow-lg">
             Trusted Seller • Gorontalo
           </span>
 
           {/* Headline */}
-          <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-4 tracking-tight drop-shadow-sm">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4 tracking-tight drop-shadow-sm leading-tight">
             Gadget Impian,<br/>Harga Teman.
           </h2>
-          <p className="text-blue-100 text-lg mb-10 max-w-2xl">
+          <p className="text-blue-100 text-sm md:text-lg mb-8 md:mb-10 max-w-2xl px-4">
             Jasa Dropship iPhone, MacBook, Pixel & Laptop Second Murah Berkualitas & Bergaransi.
           </p>
 
           {/* Search Bar Besar */}
-          <div className="w-full max-w-xl relative">
+          <div className="w-full max-w-xl relative px-4 md:px-0">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
               <Search className="text-blue-200" size={24} />
             </div>
@@ -393,14 +393,14 @@ function App() {
       </div>
 
       {/* PRODUCT GRID */}
-      <div className="max-w-7xl mx-auto px-6 mt-16 pb-20">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 mt-12 md:mt-16 pb-20">
         {activeCategory === 'promo' && (
             <div className="mb-6 flex items-center gap-2">
                 <h3 className="text-2xl font-bold text-slate-800">🔥 Sedang Promo</h3>
                 <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">{filteredProducts.length} Produk</span>
             </div>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
           {filteredProducts.map((product) => {
             // Cek apakah produk ini punya varian promo untuk display harga
             const promoVariant = product.variants.find(v => v.promoPrice > 0 && v.promoPrice < v.price);
@@ -444,26 +444,26 @@ function App() {
 
       {/* MODAL POPUP (FORM LENGKAP) */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setSelectedProduct(null)}></div>
-          <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[90vh] animate-in zoom-in-95">
-            <button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 z-10 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><X size={20} /></button>
+          <div className="relative bg-white w-full max-w-4xl rounded-2xl md:rounded-[2rem] shadow-2xl flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 overflow-y-auto md:overflow-hidden">
+            <button onClick={() => setSelectedProduct(null)} className="absolute top-3 right-3 z-20 p-2 bg-slate-100/80 backdrop-blur-sm rounded-full text-slate-500 hover:bg-slate-200 transition-colors"><X size={20} /></button>
 
             {/* Kiri: Ringkasan */}
-            <div className="w-full md:w-2/5 bg-slate-50 p-8 flex flex-col items-center text-center border-r border-slate-100">
-               <img src={selectedProduct.image} className="w-32 h-32 object-cover rounded-xl mb-4 shadow-md" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
-               <h3 className="font-bold text-slate-900 text-xl leading-tight mb-2">{selectedProduct.name}</h3>
+            <div className="w-full md:w-5/12 bg-slate-50 p-6 md:p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-slate-200 shrink-0 md:h-full md:overflow-y-auto">
+               <img src={selectedProduct.image} className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-xl mb-4 shadow-md" onError={(e) => {e.target.src = "https://placehold.co/400x400/EEE/999?text=Produk"}}/>
+               <h3 className="font-bold text-slate-900 text-xl md:text-2xl leading-tight mb-2">{selectedProduct.name}</h3>
                
                {/* Harga di Modal */}
                <div className="mb-6">
                    {selectedVariant && selectedVariant.promoPrice > 0 && selectedVariant.promoPrice < selectedVariant.price ? (
                        <div className="flex flex-col items-center">
                            <span className="text-sm text-slate-400 line-through">{formatRupiah(selectedVariant.price)}</span>
-                           <span className="text-red-600 font-extrabold text-2xl">{formatRupiah(selectedVariant.promoPrice)}</span>
+                           <span className="text-red-600 font-extrabold text-2xl md:text-3xl">{formatRupiah(selectedVariant.promoPrice)}</span>
                            <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1">Hemat {formatRupiah(selectedVariant.price - selectedVariant.promoPrice)}</span>
                        </div>
                    ) : (
-                       <p className="text-blue-600 font-extrabold text-2xl">{selectedVariant ? formatRupiah(selectedVariant.price) : '-'}</p>
+                       <p className="text-blue-600 font-extrabold text-2xl md:text-3xl">{selectedVariant ? formatRupiah(selectedVariant.price) : '-'}</p>
                    )}
                </div>
 
@@ -474,7 +474,7 @@ function App() {
                      <button 
                         key={i} 
                         onClick={() => { setSelectedVariant(v); setQuantity(1); }} 
-                        className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border transition relative ${selectedVariant === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
+                        className={`text-xs px-3 py-2 rounded-lg font-bold border transition relative ${selectedVariant === v ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}
                      >
                         {v.name}
                         {v.promoPrice > 0 && v.promoPrice < v.price && (
@@ -504,10 +504,10 @@ function App() {
             </div>
 
             {/* Kanan: Form */}
-            <div className="w-full md:w-3/5 p-8 overflow-y-auto">
+            <div className="w-full md:w-7/12 p-6 md:p-8 bg-white md:h-full md:overflow-y-auto">
               <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2 text-lg"><Truck size={20} className="text-blue-600"/> Data Pengiriman</h3>
               <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><label className="text-[10px] font-bold text-slate-400 ml-1">Nama</label><div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200"><User size={14} className="text-slate-400"/><input type="text" className="bg-transparent w-full p-2.5 text-sm outline-none" placeholder="Budi" value={buyerDetails.nama} onChange={(e) => setBuyerDetails({...buyerDetails, nama: e.target.value})} /></div></div>
                       <div><label className="text-[10px] font-bold text-slate-400 ml-1">WhatsApp</label><div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200"><Phone size={14} className="text-slate-400"/><input type="number" className="bg-transparent w-full p-2.5 text-sm outline-none" placeholder="08xx" value={buyerDetails.telepon} onChange={(e) => setBuyerDetails({...buyerDetails, telepon: e.target.value})} /></div></div>
                   </div>
@@ -517,6 +517,7 @@ function App() {
                   </div>
                   <div><label className="text-[10px] font-bold text-slate-400 ml-1">Detail (RT/RW, Kel, Kec)</label><textarea className="w-full bg-slate-50 rounded-xl p-3 text-sm border border-slate-200 outline-none" rows="2" placeholder="RT 05 RW 02, Kel. X, Kec. Y..." value={buyerDetails.alamatLengkap} onChange={(e) => setBuyerDetails({...buyerDetails, alamatLengkap: e.target.value})}></textarea></div>
                   <div><label className="text-[10px] font-bold text-slate-400 ml-1">Kode Pos</label><input type="number" className="w-1/3 bg-slate-50 rounded-xl p-2.5 text-sm border border-slate-200 outline-none" placeholder="96xxx" value={buyerDetails.kodePos} onChange={(e) => setBuyerDetails({...buyerDetails, kodePos: e.target.value})} /></div>
+                  <div><label className="text-[10px] font-bold text-slate-400 ml-1">Catatan Pesanan (Opsional)</label><textarea className="w-full bg-slate-50 rounded-xl p-3 text-sm border border-slate-200 outline-none" rows="2" placeholder="Warna cadangan, pesan khusus, dll..." value={buyerDetails.catatan} onChange={(e) => setBuyerDetails({...buyerDetails, catatan: e.target.value})}></textarea></div>
               </div>
               <div className="mt-4">
                   <label className="text-[10px] font-bold text-slate-400 ml-1">Metode Pembayaran</label>
@@ -548,8 +549,8 @@ function App() {
 
       {/* ADMIN PANEL (SEDERHANA) */}
       {isAdminOpen && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 animate-in slide-in-from-bottom max-h-[80vh] overflow-y-auto">
-            <div className="max-w-5xl mx-auto p-6">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
+            <div className="max-w-5xl mx-auto p-4 md:p-6">
                 
                 {/* ADMIN HEADER */}
                 <div className="flex justify-between items-center mb-6">
