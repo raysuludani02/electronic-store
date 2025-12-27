@@ -662,17 +662,17 @@ function App() {
                                 onChange={(e) => setAdminSearch(e.target.value)}
                             />
                         </div>
-                        <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto">
+                        <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto pr-1">
                             {products.filter(p => p.name.toLowerCase().includes(adminSearch.toLowerCase())).map((product) => (
-                                <div key={product.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition">
-                                    <div className="flex items-center gap-3">
+                                <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition gap-3">
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
                                         <img src={product.image} className="w-12 h-12 rounded-lg object-cover bg-slate-100" onError={(e) => e.target.src = "https://placehold.co/100"} />
                                         <div>
                                             <h4 className="font-bold text-sm text-slate-800">{product.name}</h4>
                                             <p className="text-xs text-slate-500">{product.variants.length} Varian • Stok Total: {product.variants.reduce((a,b) => a + parseInt(b.stock), 0)}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                                         <button onClick={() => handleDuplicateClick(product)} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition" title="Duplikat"><Copy size={16}/></button>
                                         <button onClick={() => handleEditClick(product)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"><Edit size={16}/></button>
                                         <button onClick={() => handleDeleteClick(product.id)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"><Trash2 size={16}/></button>
@@ -743,24 +743,26 @@ function App() {
                             <button onClick={addVariant} className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold hover:bg-blue-200 transition flex items-center gap-1"><Plus size={14}/> Tambah Varian</button>
                         </div>
                         
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
                             {newVariants.map((variant, index) => (
-                                <div key={index} className="flex gap-3 items-end bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                    <div className="flex-1">
+                                <div key={index} className="flex flex-col sm:flex-row gap-3 sm:items-end bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div className="w-full sm:flex-1">
                                         <label className="block text-[10px] font-bold text-slate-400 mb-1">Nama Varian</label>
                                         <input type="text" placeholder="Ex: 128GB, Merah" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.name} onChange={e => handleVariantChange(index, 'name', e.target.value)} />
                                     </div>
-                                    <div className="w-1/5">
-                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Harga (Rp)</label>
-                                        <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.price} onChange={e => handleVariantChange(index, 'price', e.target.value)} />
-                                    </div>
-                                    <div className="w-1/5">
-                                        <label className="block text-[10px] font-bold text-red-400 mb-1">Promo (Opsional)</label>
-                                        <input type="number" placeholder="0" className="w-full border border-red-200 bg-red-50 p-2 rounded-lg text-sm text-red-600" value={variant.promoPrice} onChange={e => handleVariantChange(index, 'promoPrice', e.target.value)} />
-                                    </div>
-                                    <div className="w-1/6">
-                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Stok</label>
-                                        <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.stock} onChange={e => handleVariantChange(index, 'stock', e.target.value)} />
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <div className="flex-1 sm:w-24">
+                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">Harga</label>
+                                            <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.price} onChange={e => handleVariantChange(index, 'price', e.target.value)} />
+                                        </div>
+                                        <div className="flex-1 sm:w-24">
+                                            <label className="block text-[10px] font-bold text-red-400 mb-1">Promo</label>
+                                            <input type="number" placeholder="0" className="w-full border border-red-200 bg-red-50 p-2 rounded-lg text-sm text-red-600" value={variant.promoPrice} onChange={e => handleVariantChange(index, 'promoPrice', e.target.value)} />
+                                        </div>
+                                        <div className="flex-1 sm:w-20">
+                                            <label className="block text-[10px] font-bold text-slate-400 mb-1">Stok</label>
+                                            <input type="number" placeholder="0" className="w-full border border-slate-300 p-2 rounded-lg text-sm" value={variant.stock} onChange={e => handleVariantChange(index, 'stock', e.target.value)} />
+                                        </div>
                                     </div>
                                     <button onClick={() => removeVariant(index)} className="p-2.5 bg-red-100 text-red-500 rounded-lg hover:bg-red-200 transition"><Trash2 size={16}/></button>
                                 </div>
