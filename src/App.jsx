@@ -10,11 +10,10 @@ function App() {
   // --- KONFIGURASI TOKO ---
   const shopConfig = {
     name: "GadgetStore Gorontalo",
-    waNumber: "6281234567890", 
+    waNumber: "6289505401680", 
     bankAccounts: [
-      { name: "DANA", number: "0812-3456-7890 (A.n Owner)" },
-      { name: "BNI", number: "1234567890 (A.n Owner)" },
-      { name: "BRI", number: "0987654321 (A.n Owner)" }
+      { name: "DANA", number: "089505401680 (A.n MOH SYAFRI)" },
+      { name: "BRI", number: "516001024896537 (A.n MOH SYAFRI)" }
     ]
   };
 
@@ -33,6 +32,7 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState("BRI");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdminOpen, setIsAdminOpen] = useState(false); // Toggle Admin Panel
   const [adminPassword, setAdminPassword] = useState(""); // Simpan password admin
@@ -45,7 +45,7 @@ function App() {
   
   // State untuk Form Tambah Produk
   const [newProduct, setNewProduct] = useState({
-    name: "", category: "ibox", image: "", otherImages: "", condition: "Baru", desc: ""
+    name: "", category: "ibox", image: "", otherImages: [], condition: "Baru", desc: ""
   });
   // State untuk Varian (Minimal 1)
   const [newVariants, setNewVariants] = useState([
@@ -85,7 +85,7 @@ function App() {
   };
 
   const resetForm = () => {
-    setNewProduct({ name: "", category: "ibox", image: "", otherImages: "", condition: "Baru", desc: "" });
+    setNewProduct({ name: "", category: "ibox", image: "", otherImages: [], condition: "Baru", desc: "" });
     setNewVariants([{ name: "", price: "", stock: "" }]);
     setEditingId(null);
   };
@@ -95,7 +95,7 @@ function App() {
         name: product.name,
         category: product.category,
         image: product.image,
-        otherImages: product.otherImages || "",
+        otherImages: product.images && product.images.length > 1 ? product.images.slice(1) : [],
         condition: product.condition,
         desc: product.desc
     });
@@ -136,6 +136,33 @@ function App() {
     }
   };
 
+  // HANDLE UPLOAD GAMBAR LAIN (MULTIPLE)
+  const handleOtherImagesUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const promises = files.map(file => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    });
+
+    Promise.all(promises).then(base64Images => {
+        setNewProduct(prev => ({
+            ...prev,
+            otherImages: [...prev.otherImages, ...base64Images]
+        }));
+    });
+  };
+
+  const removeOtherImage = (index) => {
+      setNewProduct(prev => ({
+          ...prev,
+          otherImages: prev.otherImages.filter((_, i) => i !== index)
+      }));
+  };
+
   // HANDLE SIMPAN (TAMBAH / EDIT)
   const handleSaveProduct = async () => {
     if (!newProduct.name || !newProduct.image) return alert("Nama Produk dan Gambar Utama wajib diisi!");
@@ -146,12 +173,13 @@ function App() {
         price: parseInt(v.price) || 0, 
         stock: parseInt(v.stock) || 0 
     }));
-    const imageList = [newProduct.image, ...newProduct.otherImages.split(',').map(s => s.trim()).filter(s => s)];
+    const imageList = [newProduct.image, ...newProduct.otherImages];
 
     const payload = {
         ...newProduct,
         variants: formattedVariants,
-        images: imageList // Simpan array gambar jika backend mendukung, atau frontend bisa pakai logic ini nanti
+        images: imageList,
+        otherImages: "" // Reset legacy field
     };
 
     try {
@@ -217,8 +245,11 @@ function App() {
     if (selectedVariant.stock <= 0) return alert("Maaf, stok varian ini sedang habis.");
     if (!buyerDetails.nama || !buyerDetails.telepon || !buyerDetails.jalan) return alert("Mohon lengkapi data alamat utama!");
 
+    const bank = shopConfig.bankAccounts.find(b => b.name === paymentMethod);
+    const paymentInfo = bank ? `${bank.name}: ${bank.number}` : "";
+
     const totalPrice = selectedVariant.price * quantity;
-    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(selectedVariant.price)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: Transfer (BNI/BRI/DANA)\n\nMohon cek ongkirnya min. Terima kasih!`;
+    const message = `Halo Admin ${shopConfig.name}, saya mau pesan:\n\n🛍️ *${selectedProduct.name}*\n📦 Varian: ${selectedVariant.name}\n🔢 Jumlah: ${quantity}\n💰 Harga Satuan: ${formatRupiah(selectedVariant.price)}\n💵 *Total: ${formatRupiah(totalPrice)}*\n\n📋 *DATA PENGIRIMAN*\n👤 Nama: ${buyerDetails.nama}\n📱 No HP: ${buyerDetails.telepon}\n🏠 Alamat: ${buyerDetails.jalan} No. ${buyerDetails.noRumah}\n📍 Detail: ${buyerDetails.alamatLengkap}\n📮 Kode Pos: ${buyerDetails.kodePos}\n💳 Pembayaran: ${paymentMethod}\nℹ️ Rekening: ${paymentInfo}\n\nMohon cek ongkirnya min. Terima kasih!`;
     const url = `https://wa.me/${shopConfig.waNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -431,6 +462,14 @@ function App() {
                   <div><label className="text-[10px] font-bold text-slate-400 ml-1">Detail (RT/RW, Kel, Kec)</label><textarea className="w-full bg-slate-50 rounded-xl p-3 text-sm border border-slate-200 outline-none" rows="2" placeholder="RT 05 RW 02, Kel. X, Kec. Y..." value={buyerDetails.alamatLengkap} onChange={(e) => setBuyerDetails({...buyerDetails, alamatLengkap: e.target.value})}></textarea></div>
                   <div><label className="text-[10px] font-bold text-slate-400 ml-1">Kode Pos</label><input type="number" className="w-1/3 bg-slate-50 rounded-xl p-2.5 text-sm border border-slate-200 outline-none" placeholder="96xxx" value={buyerDetails.kodePos} onChange={(e) => setBuyerDetails({...buyerDetails, kodePos: e.target.value})} /></div>
               </div>
+              <div className="mt-4">
+                  <label className="text-[10px] font-bold text-slate-400 ml-1">Metode Pembayaran</label>
+                  <select className="w-full bg-slate-50 rounded-xl p-2.5 text-sm border border-slate-200 outline-none" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      {shopConfig.bankAccounts.map((bank, idx) => (
+                          <option key={idx} value={bank.name}>Transfer {bank.name}</option>
+                      ))}
+                  </select>
+              </div>
               <button 
                 onClick={handleCheckout} 
                 disabled={!selectedVariant || selectedVariant.stock <= 0}
@@ -538,8 +577,18 @@ function App() {
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Gambar Lain (Opsional, pisah koma)</label>
-                            <input type="text" placeholder="url2, url3..." className="w-full border border-slate-300 p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={newProduct.otherImages} onChange={e => setNewProduct({...newProduct, otherImages: e.target.value})} />
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Gambar Lain (Opsional)</label>
+                            <div className="flex flex-col gap-2">
+                                <input type="file" accept="image/*" multiple onChange={handleOtherImagesUpload} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                <div className="flex flex-wrap gap-2">
+                                    {newProduct.otherImages.map((img, idx) => (
+                                        <div key={idx} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 group">
+                                            <img src={img} alt={`Other ${idx}`} className="w-full h-full object-cover" />
+                                            <button onClick={() => removeOtherImage(idx)} className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"><X size={12}/></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
